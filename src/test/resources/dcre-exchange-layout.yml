@@ -1,0 +1,32 @@
+# SCRUM-78 TEST layout: shadows the platform-batch classpath resource of the same name so
+# `spring.config.import: classpath:dcre-exchange-layout.yml` binds these values under test.
+# root -> build/test-exchange (per-client tree materialized there by ExchangeBootstrap); the MIR
+# initial mandate response lands at <root>/<base>/onhost-resp-man/out/<client>_<msgId>_<route>_RESP.txt.
+# FNBCC01 is the client every MIR test uses; the three canonical fleet clients mirror the man-capable
+# production set. "UNKNOWN" is deliberately absent: the headerless/no-client.token fallback must fail
+# closed (no configured dir) rather than write a NACK to a shared/wrong directory (no legacy global dir).
+#
+# NOTE (T2 dependency): the SHIPPED platform-batch dcre-exchange-layout.yml does not yet carry the
+# onhost-resp-man channel (added by SCRUM-73 T2). Production MIR resolves onhost-resp-man once that
+# lands; this test shadow supplies it so the T7 clone is exercised end to end now.
+dcre:
+  exchange:
+    # Activation marker mirrored from the shipped platform-batch yml: this shadow REPLACES that
+    # resource on the test classpath, so it must set the marker itself or ExchangeAutoConfiguration
+    # (@ConditionalOnProperty on dcre.exchange.enabled) backs off and the ExchangeLayout bean vanishes.
+    enabled: true
+    root: ${DCRE_EXCHANGE_ROOT:build/test-exchange}
+    clients:
+      "[FNBCC01]":
+        onhost-resp-man: { out: fnbcc01/onhost-resp-man/out, error: fnbcc01/onhost-resp-man/error, archive: fnbcc01/onhost-resp-man/archive }
+      "[FNBCC02]":
+        onhost-resp-man: { out: fnbcc02/onhost-resp-man/out, error: fnbcc02/onhost-resp-man/error, archive: fnbcc02/onhost-resp-man/archive }
+      "[FNBRF01]":
+        onhost-resp-man: { out: fnbrf01/onhost-resp-man/out, error: fnbrf01/onhost-resp-man/error, archive: fnbrf01/onhost-resp-man/archive }
+      # Over-length fixture: a CONFIGURED client whose identity (21 chars) exceeds
+      # man_initial_response.client VARCHAR(16). Reachable only via the headerless fallback (which
+      # takes the client.token param verbatim), so resolve succeeds and only the write-ahead INSERT
+      # would blow up with a raw "value too long" - this proves the fail-closed width guard fires
+      # BEFORE the insert, not the SQL exception.
+      "[LONGINITIATINGPARTY01]":
+        onhost-resp-man: { out: longparty01/onhost-resp-man/out, error: longparty01/onhost-resp-man/error, archive: longparty01/onhost-resp-man/archive }
