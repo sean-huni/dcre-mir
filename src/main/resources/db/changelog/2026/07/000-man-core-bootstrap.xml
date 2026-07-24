@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Shared-core bootstrap guards for dcre_man (house bootstrap-guard rule):
+         whichever M-service boots first mints these shapes, MARK_RAN converges
+         the rest, and the canonical owners arrive with their services (R-04):
+         mandate projection = MSR (T13), account master consolidation = M11.
+         FK relationships are deliberately SHAPE-ONLY (columns + indexes, no DB
+         constraints) so guarded pre-creates converge from any service order. -->
+
+    <changeSet id="mir-000-account-type" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="account_type"/></not>
+        </preConditions>
+        <createTable tableName="account_type">
+            <column name="code" type="VARCHAR(8)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(64)"><constraints nullable="false"/></column>
+            <column name="mandates_allowed" type="BOOLEAN"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="mir-000-account-type-seed" author="dcre">
+        <!-- A-62 (FNB account-type roster attestation pending): CHQ/SAV/TRN/CC/RF
+             per the spec roster. AG01 semantics: mandates are disallowed on
+             Savings only; every other type allows them until attested otherwise. -->
+        <!-- LIQUIBASE-SQL-EXCEPTION: seed emptiness has no typed precondition;
+             rowCount can only be probed via sqlCheck. -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM account_type</sqlCheck>
+        </preConditions>
+        <insert tableName="account_type">
+            <column name="code" value="CHQ"/>
+            <column name="description" value="Cheque/Current"/>
+            <column name="mandates_allowed" valueBoolean="true"/>
+        </insert>
+        <insert tableName="account_type">
+            <column name="code" value="SAV"/>
+            <column name="description" value="Savings"/>
+            <column name="mandates_allowed" valueBoolean="false"/>
+        </insert>
+        <insert tableName="account_type">
+            <column name="code" value="TRN"/>
+            <column name="description" value="Transmission"/>
+            <column name="mandates_allowed" valueBoolean="true"/>
+        </insert>
+        <insert tableName="account_type">
+            <column name="code" value="CC"/>
+            <column name="description" value="Credit Card"/>
+            <column name="mandates_allowed" valueBoolean="true"/>
+        </insert>
+        <insert tableName="account_type">
+            <column name="code" value="RF"/>
+            <column name="description" value="Revolving Facility/ENDO"/>
+            <column name="mandates_allowed" valueBoolean="true"/>
+        </insert>
+        <!-- m3: rollback deletes ONLY the codes this changeset seeds, never the
+             whole table (the shared core may hold attested rows this owns none of). -->
+        <rollback>
+            <delete tableName="account_type">
+                <where>code IN ('CHQ', 'SAV', 'TRN', 'CC', 'RF')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="mir-000-account" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="account"/></not>
+        </preConditions>
+        <createTable tableName="account">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="account_number" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_account_number"/>
+            </column>
+            <!-- FK-shaped to account_type.code; constraint deliberately app-side. -->
+            <column name="account_type_code" type="VARCHAR(8)"><constraints nullable="false"/></column>
+            <column name="product_code" type="VARCHAR(8)"/>
+            <column name="status" type="VARCHAR(16)"><constraints nullable="false"/></column>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="account" indexName="ix_account_type_code">
+            <column name="account_type_code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="mir-000-mandate" author="dcre">
+        <!-- Mandate PROJECTION shape (spec section 2); MSR is the sole writer
+             (R-10, ruling note 2). R-20/F28-F29: at-most-one EFFECTIVELY ACTIVE
+             mandate per ref is an effective-WINDOW rule enforced app-side, so
+             mandate_ref carries an index, not a DB UNIQUE constraint. -->
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="mandate"/></not>
+        </preConditions>
+        <createTable tableName="mandate">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="mandate_ref" type="VARCHAR(35)"><constraints nullable="false"/></column>
+            <column name="contract_ref" type="VARCHAR(14)"><constraints nullable="false"/></column>
+            <column name="creditor_account" type="VARCHAR(32)"><constraints nullable="false"/></column>
+            <column name="debtor_account" type="VARCHAR(32)"/>
+            <column name="debtor_branch" type="VARCHAR(16)"/>
+            <column name="debtor_name" type="VARCHAR(70)"/>
+            <column name="max_collection_amount" type="DECIMAL(18,2)"/>
+            <column name="frequency" type="VARCHAR(4)"/>
+            <column name="collection_day" type="SMALLINT"/>
+            <column name="state" type="VARCHAR(16)"><constraints nullable="false"/></column>
+            <column name="start_date" type="DATE"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="mandate" indexName="ix_mandate_ref">
+            <column name="mandate_ref"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="mir-000-mandate-reason-code" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="mandate_reason_code"/></not>
+        </preConditions>
+        <createTable tableName="mandate_reason_code">
+            <column name="code" type="VARCHAR(4)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(64)"><constraints nullable="false"/></column>
+            <column name="system_action" type="VARCHAR(32)"><constraints nullable="false"/></column>
+            <column name="accepted" type="BOOLEAN"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="mir-000-mandate-reason-code-seed" author="dcre">
+        <!-- R-21: reason codes + system actions live as reference DATA, never
+             enum ordinals. Vocabulary per the ISO 20022 external status-reason
+             set as pinned in plan T3; accepted=false throughout (the nine are
+             reject/terminal reasons; accepted-with-reason codes arrive when
+             attested). -->
+        <!-- LIQUIBASE-SQL-EXCEPTION: seed emptiness has no typed precondition;
+             rowCount can only be probed via sqlCheck. -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM mandate_reason_code</sqlCheck>
+        </preConditions>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="AC01"/>
+            <column name="description" value="Incorrect account number"/>
+            <column name="system_action" value="NO_RETRY"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="AC04"/>
+            <column name="description" value="Closed account number"/>
+            <column name="system_action" value="PERMANENT_FAIL"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="AC06"/>
+            <column name="description" value="Blocked account"/>
+            <column name="system_action" value="BLOCKED"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="AG01"/>
+            <column name="description" value="Transaction forbidden on account type"/>
+            <column name="system_action" value="DISALLOWED_TYPE"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="MD01"/>
+            <column name="description" value="No mandate / unknown mandate"/>
+            <column name="system_action" value="UNKNOWN_MANDATE"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="MD06"/>
+            <column name="description" value="Refund request by end customer"/>
+            <column name="system_action" value="DISPUTE"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="MD07"/>
+            <column name="description" value="End customer deceased"/>
+            <column name="system_action" value="TERMINATE_NOW"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="MS03"/>
+            <column name="description" value="Reason not specified"/>
+            <column name="system_action" value="BANK_RISK"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <!-- m2 marker: ISO 20022 external status-reason TM01 is CutOffTime; DCRE
+             REPURPOSES it here as the authorisation-window-expiry reason per plan
+             (PDNG starts the timer; system_action EXPIRE stays). The seeded
+             description/system_action are shape-canon with infra seed-man-core.sql. -->
+        <insert tableName="mandate_reason_code">
+            <column name="code" value="TM01"/>
+            <column name="description" value="Authorisation window timeout"/>
+            <column name="system_action" value="EXPIRE"/>
+            <column name="accepted" valueBoolean="false"/>
+        </insert>
+        <!-- m3: rollback deletes ONLY the nine reason codes this changeset seeds. -->
+        <rollback>
+            <delete tableName="mandate_reason_code">
+                <where>code IN ('AC01', 'AC04', 'AC06', 'AG01', 'MD01', 'MD06', 'MD07', 'MS03', 'TM01')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

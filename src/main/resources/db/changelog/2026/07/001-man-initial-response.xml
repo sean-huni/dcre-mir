@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- man_initial_response is MIR's first domain table and the write-ahead
+         filename ledger / system of record for every initial mandate ACK/NACK,
+         cloned from cir_response (collections initial response). One row per
+         arrival, committed BEFORE the response file is staged to onhost-resp-man/out.
+         route_id IS part of identity (A-45 cross-route twin lesson): the same
+         (client, msgId) on distinct man routes are distinct arrivals with distinct
+         files. reason persists the NACK reason (validation FAIL or MAF SCORE_DECLINED);
+         accepted_count/total_count give the per-file acceptance ratio. written_at
+         NULL after commit = staged-not-written stuck signal. MIR does NOT transition
+         the spine forward (it is the terminal response leg, DAG MIS -> {MIR, MRW});
+         this ledger is MIR's ONLY write, guarded idempotent on arrival_id.
+         MARK_RAN tableExists guard keeps the additive create re-run-safe on
+         already-migrated databases (persistence.md changeset-identity rule). -->
+    <changeSet id="mir-001-man-initial-response" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="man_initial_response"/></not>
+        </preConditions>
+        <createTable tableName="man_initial_response">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="arrival_id" type="UUID">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_man_init_resp_arrival"/>
+            </column>
+            <column name="client" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="msg_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="route_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="outcome" type="VARCHAR(4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_name" type="VARCHAR(512)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_man_init_resp_file"/>
+            </column>
+            <column name="reason" type="VARCHAR(64)"/>
+            <column name="accepted_count" type="INT"/>
+            <column name="total_count" type="INT"/>
+            <column name="written_at" type="TIMESTAMPTZ"/>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable tableName="man_initial_response"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
