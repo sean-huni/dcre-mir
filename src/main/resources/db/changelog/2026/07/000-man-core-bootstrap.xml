@@ -8,7 +8,11 @@
     <!-- Shared-core bootstrap guards for dcre_man (house bootstrap-guard rule):
          whichever M-service boots first mints these shapes, MARK_RAN converges
          the rest, and the canonical owners arrive with their services (R-04):
-         mandate projection = MSR (T13), account master consolidation = M11.
+         account master consolidation = M11. The `mandate` projection created below has
+         NO surviving writer: SCRUM-91 deleted MSR and replaced the projection with the
+         MRG-derived mnd_ext_status + mandate_effective_status + mandate_current_status
+         views. The create changeset is APPLIED and therefore immutable, so the table is
+         retired by the guarded drop at the end of this file instead.
          FK relationships are deliberately SHAPE-ONLY (columns + indexes, no DB
          constraints) so guarded pre-creates converge from any service order. -->
 
@@ -220,6 +224,32 @@
                 <where>code IN ('AC01', 'AC04', 'AC06', 'AG01', 'MD01', 'MD06', 'MD07', 'MS03', 'TM01')</where>
             </delete>
         </rollback>
+    </changeSet>
+
+    <!-- SCRUM-91: the mandate PROJECTION above is retired. MSR, its only writer, is deleted
+         in this wave; the MRG-derived mnd_ext_status, mandate_effective_status and
+         mandate_current_status views carry the state, and every other attribute the table
+         held already lives on the MRR request spine.
+
+         A NEW GUARDED DROP, not a rewrite of history: the create changeset above is APPLIED
+         on the standing cluster and is therefore immutable. This converges every reachable
+         database state. A fresh database mints the shape above and drops it again in the
+         same run, so a service booting after MRG can never resurrect the table; a live
+         database drops it once; a re-run finds it gone and MARK_RANs.
+
+         NOTHING READS IT. man_ext_status, the only view that ever did, is dropped by MRG's
+         006; man_ctv_view is rebuilt over mandate_current_status in MRG's 007. Verified by
+         grep across every surviving changelog and every src/main in the fleet, so CockroachDB
+         has no view dependency to refuse.
+
+         mandate_reason_code is NOT touched: it is reference data, not projection state.
+
+         MRG's copy of this file deliberately omits this changeset (its own 003 view still
+         reads the table at migration time) and drops it in 009-drop-mandate-projection.xml
+         instead; see the header note there. -->
+    <changeSet id="mir-000-drop-mandate-projection" author="dcre">
+        <preConditions onFail="MARK_RAN"><tableExists tableName="mandate"/></preConditions>
+        <dropTable tableName="mandate"/>
     </changeSet>
 
 </databaseChangeLog>
