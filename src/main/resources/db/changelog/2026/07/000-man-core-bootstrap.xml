@@ -14,7 +14,11 @@
          views. The create changeset is APPLIED and therefore immutable, so the table is
          retired by the guarded drop at the end of this file instead.
          FK relationships are deliberately SHAPE-ONLY (columns + indexes, no DB
-         constraints) so guarded pre-creates converge from any service order. -->
+         constraints) so guarded pre-creates converge from any service order.
+
+         SHARED-CORE CANON: this file is byte-identical across ALL TEN M-services, MRG
+         included; only the <svc>-prefixed changeset ids differ. Reviewers diff the copies,
+         so an edit to one copy is an edit to all ten. -->
 
     <changeSet id="mir-000-account-type" author="dcre">
         <preConditions onFail="MARK_RAN">
@@ -100,9 +104,10 @@
     </changeSet>
 
     <changeSet id="mir-000-mandate" author="dcre">
-        <!-- Mandate PROJECTION shape (spec section 2); MSR is the sole writer
-             (R-10, ruling note 2). R-20/F28-F29: at-most-one EFFECTIVELY ACTIVE
-             mandate per ref is an effective-WINDOW rule enforced app-side, so
+        <!-- Mandate PROJECTION shape (spec section 2); MSR was the sole writer
+             (R-10, ruling note 2) and SCRUM-91 deleted it, so the guarded drop at the
+             end of this file retires the shape. R-20/F28-F29: at-most-one EFFECTIVELY
+             ACTIVE mandate per ref is an effective-WINDOW rule enforced app-side, so
              mandate_ref carries an index, not a DB UNIQUE constraint. -->
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="mandate"/></not>
@@ -237,16 +242,18 @@
          same run, so a service booting after MRG can never resurrect the table; a live
          database drops it once; a re-run finds it gone and MARK_RANs.
 
-         NOTHING READS IT. man_ext_status, the only view that ever did, is dropped by MRG's
-         006; man_ctv_view is rebuilt over mandate_current_status in MRG's 007. Verified by
-         grep across every surviving changelog and every src/main in the fleet, so CockroachDB
-         has no view dependency to refuse.
+         NOTHING READS IT, IN ANY SERVICE, AT ANY INSTANT. That is a stronger claim than
+         "nothing reads it once every migration has finished", and this drop needs the
+         stronger one: every M-service owns its own liquibase history and lock table, so
+         NOTHING serializes the ten migrations and this drop can land while any sibling is
+         mid-run. An un-cascaded drop is refused while a dependent view stands, and no
+         cascadeConstraints is used here on purpose (a cascade would silently take unrelated
+         dependents with it). MRG's man_ext_status was the only view that ever selected from
+         the table; SCRUM-91 removed the changeset that built it, so it can no longer come
+         into existence during anyone's migration, and MRG retires any standing copy ahead
+         of this file. man_ctv_view is rebuilt over mandate_current_status in MRG's 007.
 
-         mandate_reason_code is NOT touched: it is reference data, not projection state.
-
-         MRG's copy of this file deliberately omits this changeset (its own 003 view still
-         reads the table at migration time) and drops it in 009-drop-mandate-projection.xml
-         instead; see the header note there. -->
+         mandate_reason_code is NOT touched: it is reference data, not projection state. -->
     <changeSet id="mir-000-drop-mandate-projection" author="dcre">
         <preConditions onFail="MARK_RAN"><tableExists tableName="mandate"/></preConditions>
         <dropTable tableName="mandate"/>
