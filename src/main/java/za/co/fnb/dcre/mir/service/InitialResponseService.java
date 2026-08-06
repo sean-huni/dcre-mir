@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * a header line {@code ACK|<client>|<msgId>|<accepted>/<total>|ACCEPTED_BY_DCRE} or
  * {@code NACK|<client>|<msgId>|0/<total>|<reason>}, followed by one
  * {@code REJ|<sequence>|<reason>} line per rejection. ACK means accepted-by-DCRE.
- * MIR is the terminal response leg (DAG MIS -> {MIR, MRW}); it does NOT transition the spine
+ * MIR is the terminal response leg (DAG MIT -> {MIR, MRW}); it does NOT transition the spine
  * forward. StagedWrite makes a re-run a restart no-op (R-05); the ledger insert is idempotent
  * on the full arrival identity, so a restart re-emits the SAME single file and row.
  */
