@@ -24,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * MIR composes the initial mandate ACK/NACK from the dcre_man spine + MRV verdicts + the
- * MAF SCORE_DECLINED spine state, and stages it to onhost-resp-man/out. Reject reasons come
- * from BOTH man_validation_log (MRV FAILs) and mandate_request_entry.spine_state (MAF
+ * MAS SCORE_DECLINED spine state, and stages it to onhost-resp-man/out. Reject reasons come
+ * from BOTH man_validation_log (MRV FAILs) and mandate_request_entry.spine_state (MAS
  * decline -> FAIL_SCORE_BELOW_THRESHOLD). Headerless arrivals (MRR fataled pre-persist) still
  * NACK from AGT job params; missing route / unconfigured client fail closed.
  */
@@ -87,7 +87,7 @@ class InitialResponseServiceIT {
         ManTestTables.insertHeader(jdbc, arrival, "FNBRF01", msgId, 5);
         ManTestTables.insertRow(jdbc, arrival, 1, "FAIL_ACCOUNT_NOT_FOUND", "REJECTED"); // MRV fail
         ManTestTables.insertPassRow(jdbc, arrival, 2);
-        ManTestTables.insertRow(jdbc, arrival, 3, "PASS", "SCORE_DECLINED"); // passed MRV, MAF declined
+        ManTestTables.insertRow(jdbc, arrival, 3, "PASS", "SCORE_DECLINED"); // passed MRV, MAS declined
         ManTestTables.insertPassRow(jdbc, arrival, 4);
         ManTestTables.insertPassRow(jdbc, arrival, 5);
 

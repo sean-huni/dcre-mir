@@ -1,7 +1,7 @@
 # MIR composes the initial ACK/NACK for one mandate arrival and stages it into the
 # OnHost mandate response directory (onhost-resp-man). ACK means accepted-by-DCRE;
 # per-record rejections travel as REJ detail lines whose reason is either an MRV
-# validation FAIL or the MAF SCORE_DECLINED (FAIL_SCORE_BELOW_THRESHOLD, R-08). A
+# validation FAIL or the MAS SCORE_DECLINED (FAIL_SCORE_BELOW_THRESHOLD, R-08). A
 # file-fatal arrival is NACKed outright. StagedWrite makes a re-run a restart no-op (R-05).
 # The response record layout is SYNTHETIC (A-57 class), pending the mandate response copybook.
 @mir

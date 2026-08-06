@@ -8,6 +8,6 @@ import java.util.UUID;
 
 public interface ManRequestEntryRepo extends CrudRepository<ManRequestEntryView, UUID> {
 
-    /** Spine rows in a given state (e.g. MAF SCORE_DECLINED), ordered by sequence for the response. */
+    /** Spine rows in a given state (e.g. MAS SCORE_DECLINED), ordered by sequence for the response. */
     List<ManRequestEntryView> findByArrivalIdAndSpineStateOrderBySequence(UUID arrivalId, String spineState);
 }

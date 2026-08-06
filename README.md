@@ -4,7 +4,7 @@ Mandates Initial Response: the terminal response leg of the M10 mandates request
 
 ## What it does
 
-MIR is a terminal leg of the mandates request DAG (`MRR -> MRV -> MAF -> MIT -> { MIR || MRW }`). Once MIT has initialized the accepted rows, AGT launches MIR as a short-lived Kubernetes Job with `arrival.id` (plus `route.id`, and optional `fatal.reason` / `client.token` / `msg.id` / `outcome.hint`) as JobParameters. MIR reads the arrival's whole-file identity and per-row verdicts and writes a single response file the OnHost client can consume. It is a direct clone of `dcre-cir` (Collections Initial Response); the mandate variant differs only in its data sources and its output channel.
+MIR is a terminal leg of the mandates request DAG (`MRR -> MRV -> MAS -> MIT -> { MIR || MRW }`). Once MIT has initialized the accepted rows, AGT launches MIR as a short-lived Kubernetes Job with `arrival.id` (plus `route.id`, and optional `fatal.reason` / `client.token` / `msg.id` / `outcome.hint`) as JobParameters. MIR reads the arrival's whole-file identity and per-row verdicts and writes a single response file the OnHost client can consume. It is a direct clone of `dcre-cir` (Collections Initial Response); the mandate variant differs only in its data sources and its output channel.
 
 MIR does NOT transition the spine forward: it is the response leg, and the reader chain proceeds via MRW independently. Its ONLY write is the `man_initial_response` ledger row, guarded idempotent on the full arrival identity.
 
@@ -21,7 +21,7 @@ The header line is `ACK|<client>|<msgId>|<accepted>/<total>|ACCEPTED_BY_DCRE` (a
 Rejections are gathered by `RejectGatherer` from the two mandate reject sources and merged by sequence:
 
 - **MRV verdicts** (`man_validation_log`, outcome != PASS): validation FAILs, reported under their `MandateOutcome` name (e.g. `FAIL_ACCOUNT_NOT_FOUND`, `FAIL_STRUCTURE`, `FAIL_DUPLICATE_REF`).
-- **MAF declines** (`mandate_request_entry.spine_state = SCORE_DECLINED`): rows that PASSED MRV then failed the bureau score gate (R-08). They never appear as a non-PASS MRV verdict, so they are a DISTINCT source, reported as `FAIL_SCORE_BELOW_THRESHOLD`. `HOLD_BUREAU_UNAVAILABLE` rows are never MIR-NACKed (R-12 carry-over): they stay `SCORE_PENDING` and are never `SCORE_DECLINED`.
+- **MAS declines** (`mandate_request_entry.spine_state = SCORE_DECLINED`): rows that PASSED MRV then failed the bureau score gate (R-08). They never appear as a non-PASS MRV verdict, so they are a DISTINCT source, reported as `FAIL_SCORE_BELOW_THRESHOLD`. `HOLD_BUREAU_UNAVAILABLE` rows are never MIR-NACKed (R-12 carry-over): they stay `SCORE_PENDING` and are never `SCORE_DECLINED`.
 
 ### Synthetic response layout (A-57 class)
 
@@ -54,7 +54,7 @@ The MRR-owned spine (`mandate_request_header` / `mandate_request_entry`) and the
 
 Red-first Testcontainers CockroachDB + filesystem, 26 tests across 5 classes:
 
-- `InitialResponseServiceIT` (10): the ACK path, the partial path itemizing both a validation FAIL and a MAF `SCORE_DECLINED`, the whole-file `BUSINESS_FILE_REJECTED` NACK, headerless / no-verdicts NACKs, and the fail-closed paths (unconfigured client, missing/invalid route, over-length client identity).
+- `InitialResponseServiceIT` (10): the ACK path, the partial path itemizing both a validation FAIL and a MAS `SCORE_DECLINED`, the whole-file `BUSINESS_FILE_REJECTED` NACK, headerless / no-verdicts NACKs, and the fail-closed paths (unconfigured client, missing/invalid route, over-length client identity).
 - `ManInitialResponseCaptureIT` (5): the ledger is queryable by filename with its reason and ratio, and the zero-duplicate resume audit (exactly one stamped file and one row after a kill between the row commit and the staged write, and after a kill between the file write and the stamp).
 - `MirJobTest` (4): the real job end to end, restart no-op with a zero-duplicate ledger, and the seam-level route / unconfigured-client fail-closed.
 - `MirJobConfigRetryTest` (1): the CRDB 40001 commit-abort retry is wired on the respond step.
