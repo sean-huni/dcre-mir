@@ -14,7 +14,7 @@
          files. reason persists the NACK reason (validation FAIL or MAF SCORE_DECLINED);
          accepted_count/total_count give the per-file acceptance ratio. written_at
          NULL after commit = staged-not-written stuck signal. MIR does NOT transition
-         the spine forward (it is the terminal response leg, DAG MIS -> {MIR, MRW});
+         the spine forward (it is the terminal response leg, DAG MIT -> {MIR, MRW});
          this ledger is MIR's ONLY write, guarded idempotent on arrival_id.
          MARK_RAN tableExists guard keeps the additive create re-run-safe on
          already-migrated databases (persistence.md changeset-identity rule). -->

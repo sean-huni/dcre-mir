@@ -4,7 +4,7 @@ Mandates Initial Response: the terminal response leg of the M10 mandates request
 
 ## What it does
 
-MIR is a terminal leg of the mandates request DAG (`MRR -> MRV -> MAF -> MIS -> { MIR || MRW }`). Once MIS has initialized the accepted rows, AGT launches MIR as a short-lived Kubernetes Job with `arrival.id` (plus `route.id`, and optional `fatal.reason` / `client.token` / `msg.id` / `outcome.hint`) as JobParameters. MIR reads the arrival's whole-file identity and per-row verdicts and writes a single response file the OnHost client can consume. It is a direct clone of `dcre-cir` (Collections Initial Response); the mandate variant differs only in its data sources and its output channel.
+MIR is a terminal leg of the mandates request DAG (`MRR -> MRV -> MAF -> MIT -> { MIR || MRW }`). Once MIT has initialized the accepted rows, AGT launches MIR as a short-lived Kubernetes Job with `arrival.id` (plus `route.id`, and optional `fatal.reason` / `client.token` / `msg.id` / `outcome.hint`) as JobParameters. MIR reads the arrival's whole-file identity and per-row verdicts and writes a single response file the OnHost client can consume. It is a direct clone of `dcre-cir` (Collections Initial Response); the mandate variant differs only in its data sources and its output channel.
 
 MIR does NOT transition the spine forward: it is the response leg, and the reader chain proceeds via MRW independently. Its ONLY write is the `man_initial_response` ledger row, guarded idempotent on the full arrival identity.
 
