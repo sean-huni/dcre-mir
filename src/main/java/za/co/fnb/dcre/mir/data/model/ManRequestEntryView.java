@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Read model over the MRR-owned {@code mandate_request_entry} spine (shared dcre_man):
- * MIR reads {@code spine_state} to surface the MAF decline. A row MAF put at
+ * MIR reads {@code spine_state} to surface the MAS decline. A row MAS put at
  * {@code SCORE_DECLINED} (below the per-client bureau threshold, R-08) passed MRV, so it
  * never appears in man_validation_log as a non-PASS; MIR itemizes it as a distinct
  * per-record rejection. Standalone view (CIR pattern): the derived query selects only the

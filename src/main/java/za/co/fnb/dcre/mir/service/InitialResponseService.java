@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 
 /**
  * Business tier (configuration.md point 21): composes the initial mandate ACK/NACK for one
- * arrival from the dcre_man spine + MRV verdicts + MAF SCORE_DECLINED state, and stages it to
+ * arrival from the dcre_man spine + MRV verdicts + MAS SCORE_DECLINED state, and stages it to
  * the OnHost mandate response directory (onhost-resp-man). Cloned from CIR InitialResponseService.
  *
  * <p>SYNTHETIC-CONTRACT response layout (A-57 class), pending the mandate response-copybook:
@@ -91,7 +91,7 @@ public class InitialResponseService {
         final List<String> lines = new ArrayList<>();
         final Decision decision;
         if ("BUSINESS_FILE_REJECTED".equals(outcomeHint)) {
-            // R-41 ALL_OR_NOTHING: whole file refused by policy, itemized per rejection (MRV + MAF).
+            // R-41 ALL_OR_NOTHING: whole file refused by policy, itemized per rejection (MRV + MAS).
             lines.add("NACK|" + client + "|" + headerMsgId + "|0/" + total + "|FILE_REJECTED_BY_POLICY");
             addRejLines(lines, gathered.rejects());
             decision = new Decision("NACK", "FILE_REJECTED_BY_POLICY", 0, total);

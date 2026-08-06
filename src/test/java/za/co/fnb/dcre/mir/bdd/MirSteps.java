@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Step definitions for the mandate initial response writer. Seeding mirrors MirJobTest:
  * mandate_request_header + mandate_request_entry (spine_state) + man_validation_log rows
- * stand in for the MRR/MRV/MAF upstream writers (R-04 single-writer seams).
+ * stand in for the MRR/MRV/MAS upstream writers (R-04 single-writer seams).
  */
 public class MirSteps {
 

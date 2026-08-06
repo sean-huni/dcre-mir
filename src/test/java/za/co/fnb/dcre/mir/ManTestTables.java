@@ -10,7 +10,7 @@ import java.util.UUID;
  * mandate_request_entry) and the MRV-owned man_validation_log are NOT in MIR's changelog
  * (single-writer, R-04), so this helper stands them up with the subset of columns the MIR
  * read models map, exactly as CIR's tests stand up the CRR/CTV upstream tables. spine_state
- * defaults to VALIDATED here (the state a row reaches after MRV passes it); a MAF decline is
+ * defaults to VALIDATED here (the state a row reaches after MRV passes it); a MAS decline is
  * seeded by flipping it to SCORE_DECLINED.
  */
 public final class ManTestTables {
@@ -50,7 +50,7 @@ public final class ManTestTables {
                 VALUES (?,?,?,?)""", arrival, client, msgId, entryCount);
     }
 
-    /** One spine row plus its MRV verdict; spineState VALIDATED (passed) or SCORE_DECLINED (MAF decline). */
+    /** One spine row plus its MRV verdict; spineState VALIDATED (passed) or SCORE_DECLINED (MAS decline). */
     public static void insertRow(final JdbcTemplate jdbc, final UUID arrival, final int sequence,
                                  final String outcome, final String spineState) {
         jdbc.update("UPSERT INTO mandate_request_entry (arrival_id, sequence, spine_state) VALUES (?,?,?)",

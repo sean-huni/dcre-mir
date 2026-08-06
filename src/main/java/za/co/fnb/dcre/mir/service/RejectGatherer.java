@@ -17,20 +17,20 @@ import java.util.UUID;
  * <ul>
  *   <li><b>MRV verdicts</b> ({@code man_validation_log}, outcome != PASS): the
  *       validation FAILs, reported under their {@code MandateOutcome} name.</li>
- *   <li><b>MAF declines</b> ({@code mandate_request_entry.spine_state = SCORE_DECLINED}):
+ *   <li><b>MAS declines</b> ({@code mandate_request_entry.spine_state = SCORE_DECLINED}):
  *       rows that PASSED MRV then failed the bureau score gate (R-08). These never
  *       appear as a non-PASS MRV verdict, so they are a DISTINCT source, reported as
  *       {@link MandateOutcome#FAIL_SCORE_BELOW_THRESHOLD}.</li>
  * </ul>
  *
- * The two sources are disjoint by construction (MAF runs only on VALIDATED rows), but
+ * The two sources are disjoint by construction (MAS runs only on VALIDATED rows), but
  * the merge is keyed by sequence with MRV precedence so a defensive overlap is
  * de-duplicated rather than double-counted in the acceptance ratio.
  */
 @Service
 public class RejectGatherer {
 
-    /** spine_state MAF sets when the bureau score is below the per-client threshold (plan T5). */
+    /** spine_state MAS sets when the bureau score is below the per-client threshold (plan T5). */
     static final String SCORE_DECLINED = "SCORE_DECLINED";
     private static final String PASS = MandateOutcome.PASS.name();
 
