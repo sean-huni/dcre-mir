@@ -5,22 +5,45 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <!-- Shared-core bootstrap guards for dcre_man (house bootstrap-guard rule):
-         whichever M-service boots first mints these shapes, MARK_RAN converges
-         the rest, and the canonical owners arrive with their services (R-04):
-         account master consolidation = M11. The `mandate` projection created below has
-         NO surviving writer: SCRUM-91 deleted MSR and replaced the projection with the
-         MRG-derived mnd_ext_status + mandate_effective_status + mandate_current_status
-         views. The create changeset is APPLIED and therefore immutable, so the table is
-         retired by the guarded drop at the end of this file instead.
-         FK relationships are deliberately SHAPE-ONLY (columns + indexes, no DB
-         constraints) so guarded pre-creates converge from any service order.
+    <!-- ===================================================================================
+         V1 BASELINE (SCRUM-107, owner directive 2026-08-08). THIS IS THE FIRST MIGRATION ANY
+         dcre_man WILL EVER SEE.
+
+         Every DCRE database is dropped and recreated for the direct cut-over, so there is no
+         historic state, no deployed schema and nothing to converge. The retrofit apparatus a
+         migration needs is therefore ABSENT BY DESIGN and must not be re-added:
+
+           - no <validCheckSum>ANY</validCheckSum>: no checksum was ever recorded anywhere;
+           - no defensive IF NOT EXISTS on a CREATE: nothing exists;
+           - no create-then-drop pair retiring a shape v1 simply never mints. The `mandate`
+             PROJECTION is the one that used to live here. It had no writer after MSR was
+             deleted and no reader in any service, so v1 does not create it at all, and the
+             guarded drop that used to retire it is gone with it.
+
+         THE MARK_RAN GUARDS THAT REMAIN ARE CONVERGENCE GUARDS, NOT RETROFITS, and each says
+         which writer it converges with. Two independent writers can put these three shared
+         reference tables in place before this changelog runs on a brand-new database:
+
+           1. the infra bootstrap, dcre-infra scripts/seed-man-core.sql, which creates and
+              seeds account_type, account and mandate_reason_code in dcre_man; and
+           2. any of the other nine M-services, because all ten migrate the one dcre_man with
+              ten independent history + lock tables and NOTHING serializes them.
+
+         So on an empty database these objects genuinely can already exist, which is exactly
+         the condition a MARK_RAN guard is for. The rest of this file's changesets create
+         objects only this service creates and carry no guard.
 
          SHARED-CORE CANON: this file is byte-identical across ALL TEN M-services, MRG
-         included; only the <svc>-prefixed changeset ids differ. Reviewers diff the copies,
-         so an edit to one copy is an edit to all ten. -->
+         included; only the mir-prefixed changeset ids differ. Reviewers diff the copies, so
+         an edit to one copy is an edit to all ten.
+
+         FK relationships are deliberately SHAPE-ONLY (columns + indexes, no DB constraints)
+         so the convergent pre-creates above can land in any service order.
+         =================================================================================== -->
 
     <changeSet id="mir-000-account-type" author="dcre">
+        <!-- CONVERGENCE GUARD: infra seed-man-core.sql or a sibling M-service may have
+             created this table already. See the file header. -->
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="account_type"/></not>
         </preConditions>
@@ -37,6 +60,8 @@
         <!-- A-62 (FNB account-type roster attestation pending): CHQ/SAV/TRN/CC/RF
              per the spec roster. AG01 semantics: mandates are disallowed on
              Savings only; every other type allows them until attested otherwise. -->
+        <!-- CONVERGENCE GUARD: infra seed-man-core.sql seeds these same rows, so the seed is
+             skipped when the reference core is already populated. -->
         <!-- LIQUIBASE-SQL-EXCEPTION: seed emptiness has no typed precondition;
              rowCount can only be probed via sqlCheck. -->
         <preConditions onFail="MARK_RAN">
@@ -77,6 +102,19 @@
     </changeSet>
 
     <changeSet id="mir-000-account" author="dcre">
+        <!-- CONVERGENCE GUARD: see the file header.
+
+             [!CONVENTION-OVERRIDE] `account.account_number` repeats its own host table and by
+             rules/be/java/architecture.md ("Column & field naming") should be `account.number`.
+             It is NOT autocorrected here. The column's canonical shape is minted by
+             dcre-infra scripts/seed-man-core.sql, which this changeset MARK_RANs behind, and
+             an identically-named column is carried by the collections family's own copy of
+             the account master. Renaming it in the mandates changelogs alone would leave the
+             infra seed as the winning writer on every real environment while every mandates
+             test, which builds the table from THIS file, went green against the new name: a
+             rename that passes its suite and breaks the cluster. The coordinated edit set
+             spanning dcre-infra, collections and mandates is written up in the SCRUM-107
+             report; the rename lands there, in one wave, or not at all. -->
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="account"/></not>
         </preConditions>
@@ -87,7 +125,8 @@
             <column name="account_number" type="VARCHAR(32)">
                 <constraints nullable="false" unique="true" uniqueConstraintName="uq_account_number"/>
             </column>
-            <!-- FK-shaped to account_type.code; constraint deliberately app-side. -->
+            <!-- FK-shaped to account_type.code; constraint deliberately app-side. Names its
+                 TARGET table, so the no-host-prefix rule exempts it. -->
             <column name="account_type_code" type="VARCHAR(8)"><constraints nullable="false"/></column>
             <column name="product_code" type="VARCHAR(8)"/>
             <column name="status" type="VARCHAR(16)"><constraints nullable="false"/></column>
@@ -103,44 +142,8 @@
         </createIndex>
     </changeSet>
 
-    <changeSet id="mir-000-mandate" author="dcre">
-        <!-- Mandate PROJECTION shape (spec section 2); MSR was the sole writer
-             (R-10, ruling note 2) and SCRUM-91 deleted it, so the guarded drop at the
-             end of this file retires the shape. R-20/F28-F29: at-most-one EFFECTIVELY
-             ACTIVE mandate per ref is an effective-WINDOW rule enforced app-side, so
-             mandate_ref carries an index, not a DB UNIQUE constraint. -->
-        <preConditions onFail="MARK_RAN">
-            <not><tableExists tableName="mandate"/></not>
-        </preConditions>
-        <createTable tableName="mandate">
-            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="mandate_ref" type="VARCHAR(35)"><constraints nullable="false"/></column>
-            <column name="contract_ref" type="VARCHAR(14)"><constraints nullable="false"/></column>
-            <column name="creditor_account" type="VARCHAR(32)"><constraints nullable="false"/></column>
-            <column name="debtor_account" type="VARCHAR(32)"/>
-            <column name="debtor_branch" type="VARCHAR(16)"/>
-            <column name="debtor_name" type="VARCHAR(70)"/>
-            <column name="max_collection_amount" type="DECIMAL(18,2)"/>
-            <column name="frequency" type="VARCHAR(4)"/>
-            <column name="collection_day" type="SMALLINT"/>
-            <column name="state" type="VARCHAR(16)"><constraints nullable="false"/></column>
-            <column name="start_date" type="DATE"/>
-            <column name="expiry_date" type="DATE"/>
-            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
-                <constraints nullable="false"/>
-            </column>
-            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="now()">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-        <createIndex tableName="mandate" indexName="ix_mandate_ref">
-            <column name="mandate_ref"/>
-        </createIndex>
-    </changeSet>
-
     <changeSet id="mir-000-mandate-reason-code" author="dcre">
+        <!-- CONVERGENCE GUARD: see the file header. -->
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="mandate_reason_code"/></not>
         </preConditions>
@@ -160,6 +163,7 @@
              set as pinned in plan T3; accepted=false throughout (the nine are
              reject/terminal reasons; accepted-with-reason codes arrive when
              attested). -->
+        <!-- CONVERGENCE GUARD: infra seed-man-core.sql seeds these same rows. -->
         <!-- LIQUIBASE-SQL-EXCEPTION: seed emptiness has no typed precondition;
              rowCount can only be probed via sqlCheck. -->
         <preConditions onFail="MARK_RAN">
@@ -229,34 +233,6 @@
                 <where>code IN ('AC01', 'AC04', 'AC06', 'AG01', 'MD01', 'MD06', 'MD07', 'MS03', 'TM01')</where>
             </delete>
         </rollback>
-    </changeSet>
-
-    <!-- SCRUM-91: the mandate PROJECTION above is retired. MSR, its only writer, is deleted
-         in this wave; the MRG-derived mnd_ext_status, mandate_effective_status and
-         mandate_current_status views carry the state, and every other attribute the table
-         held already lives on the MRR request spine.
-
-         A NEW GUARDED DROP, not a rewrite of history: the create changeset above is APPLIED
-         on the standing cluster and is therefore immutable. This converges every reachable
-         database state. A fresh database mints the shape above and drops it again in the
-         same run, so a service booting after MRG can never resurrect the table; a live
-         database drops it once; a re-run finds it gone and MARK_RANs.
-
-         NOTHING READS IT, IN ANY SERVICE, AT ANY INSTANT. That is a stronger claim than
-         "nothing reads it once every migration has finished", and this drop needs the
-         stronger one: every M-service owns its own liquibase history and lock table, so
-         NOTHING serializes the ten migrations and this drop can land while any sibling is
-         mid-run. An un-cascaded drop is refused while a dependent view stands, and no
-         cascadeConstraints is used here on purpose (a cascade would silently take unrelated
-         dependents with it). MRG's man_ext_status was the only view that ever selected from
-         the table; SCRUM-91 removed the changeset that built it, so it can no longer come
-         into existence during anyone's migration, and MRG retires any standing copy ahead
-         of this file. man_ctv_view is rebuilt over mandate_current_status in MRG's 007.
-
-         mandate_reason_code is NOT touched: it is reference data, not projection state. -->
-    <changeSet id="mir-000-drop-mandate-projection" author="dcre">
-        <preConditions onFail="MARK_RAN"><tableExists tableName="mandate"/></preConditions>
-        <dropTable tableName="mandate"/>
     </changeSet>
 
 </databaseChangeLog>
