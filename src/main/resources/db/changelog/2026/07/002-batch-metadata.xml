@@ -7,7 +7,7 @@
 
     <!-- ===================================================================================
          V1 BASELINE (SCRUM-107, owner directive 2026-08-08). Spring Batch 6.0.4 metadata for
-         MRR, table-prefixed MIR_BATCH_ so this service is the single writer of its own job
+         MIR, table-prefixed MIR_BATCH_ so this service is the single writer of its own job
          repository (R-34). EXIT_MESSAGE is widened to TEXT so a CockroachDB driver cause
          chain is never truncated.
 
@@ -29,7 +29,7 @@
              (rules/be/java/persistence.md, pure-XML mandate).
 
          No changeset here carries a MARK_RAN guard: every object is MIR_BATCH_-prefixed and
-         MRR is the only service that creates it, so on a v1 database it cannot already exist.
+         MIR is the only service that creates it, so on a v1 database it cannot already exist.
 
          Constraint names (JOB_INST_UN, JOB_INST_EXEC_FK, ...) are Spring Batch's own and are
          deliberately NOT service-prefixed, matching the DDL this replaces. CockroachDB scopes
