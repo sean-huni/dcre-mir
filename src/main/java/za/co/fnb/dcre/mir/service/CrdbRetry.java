@@ -13,7 +13,7 @@ import java.util.function.Supplier;
  * NORMAL under contention (persistence.md): retry with backoff, never skip.
  * The op MUST open its own transaction per attempt: an aborted CRDB
  * transaction rejects every further statement (25P02) until rolled back.
- * Fleet template (identical shape to cir/ixr/sxr/ais CrdbRetry).
+ * Fleet template (identical shape to cir/cix/csx/pai CrdbRetry).
  */
 final class CrdbRetry {
 

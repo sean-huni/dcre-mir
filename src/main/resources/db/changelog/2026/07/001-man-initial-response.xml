@@ -5,6 +5,32 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
+    <!-- ===================================================================================
+         V1 BASELINE (SCRUM-107, owner directive 2026-08-08). THIS FILE MINTS
+         man_initial_response FOR THE FIRST AND ONLY TIME.
+
+         Every DCRE database is dropped and recreated for the direct cut-over, so there is no
+         historic state, no deployed schema and nothing to converge. The one object this file
+         creates has EXACTLY ONE creator: MIR. Neither the infra bootstrap
+         (dcre-infra scripts/seed-man-core.sql, which creates only the three shared reference
+         tables) nor any of the other nine M-services writes man_initial_response, so on a
+         brand-new dcre_man it cannot already exist and there is nothing for a MARK_RAN guard
+         to converge with.
+
+         The retrofit apparatus is therefore ABSENT BY DESIGN and must not be re-added:
+
+           - no onFail="MARK_RAN" tableExists precondition: a single-creator object cannot
+             lose a race that has no second runner, and a guard here would silently MARK_RAN
+             a genuine failure to create the table;
+           - no validCheckSum: no checksum was ever recorded anywhere;
+           - no defensive IF NOT EXISTS on the CREATE: nothing exists;
+           - no additive addColumn or index swap: the shape below IS the shape, folded into
+             the one createTable.
+
+         The <rollback> stays. Dropping the table when this changeset is rolled BACK is a
+         rollback, not a retrofit, and v1 keeps it.
+         =================================================================================== -->
+
     <!-- man_initial_response is MIR's first domain table and the write-ahead
          filename ledger / system of record for every initial mandate ACK/NACK,
          cloned from cir_response (collections initial response). One row per
@@ -15,13 +41,8 @@
          accepted_count/total_count give the per-file acceptance ratio. written_at
          NULL after commit = staged-not-written stuck signal. MIR does NOT transition
          the spine forward (it is the terminal response leg, DAG MIT -> {MIR, MRW});
-         this ledger is MIR's ONLY write, guarded idempotent on arrival_id.
-         MARK_RAN tableExists guard keeps the additive create re-run-safe on
-         already-migrated databases (persistence.md changeset-identity rule). -->
+         this ledger is MIR's ONLY write, guarded idempotent on arrival_id. -->
     <changeSet id="mir-001-man-initial-response" author="dcre">
-        <preConditions onFail="MARK_RAN">
-            <not><tableExists tableName="man_initial_response"/></not>
-        </preConditions>
         <createTable tableName="man_initial_response">
             <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
                 <constraints primaryKey="true" nullable="false"/>

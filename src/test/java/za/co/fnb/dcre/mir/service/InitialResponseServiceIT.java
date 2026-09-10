@@ -124,20 +124,26 @@ class InitialResponseServiceIT {
     @Test
     void headerlessArrivalStillProducesNackFromJobParams() throws Exception {
         UUID arrival = UUID.randomUUID();   // NO mandate_request_header row: the MRR-fataled shape
+        // The msgId must be UNIQUE PER RUN, like every sibling test in this class. R-05 makes
+        // publication a no-op when the response file already exists, and the file is named from
+        // the msgId, so a FIXED msgId makes written() false on the second run against a build
+        // directory that was not cleaned: correct production behaviour, failing test.
+        String msgId = "DCREMANHDR" + arrival.toString().substring(0, 5);
         var result = service.respond(arrival, "onhost-req-man", "spine count 10 != declared 11",
-                "FNBRF01", "DCREMANHDR01", null);
+                "FNBRF01", msgId, null);
         assertTrue(result.written());
         List<String> lines = Files.readAllLines(result.responseFile());
         assertEquals(1, lines.size());
-        assertEquals("NACK|FNBRF01|DCREMANHDR01|0/0|spine count 10 != declared 11", lines.get(0));
+        assertEquals("NACK|FNBRF01|" + msgId + "|0/0|spine count 10 != declared 11", lines.get(0));
     }
 
     @Test
     void headerlessArrivalWithoutFatalReasonNacksNoHeader() throws Exception {
         UUID arrival = UUID.randomUUID();
-        var result = service.respond(arrival, "onhost-req-man", null, "FNBRF01", "DCREMANHDR02", null);
+        String msgId = "DCREMANHDRX" + arrival.toString().substring(0, 5);   // unique per run, see above
+        var result = service.respond(arrival, "onhost-req-man", null, "FNBRF01", msgId, null);
         assertTrue(result.written());
-        assertEquals("NACK|FNBRF01|DCREMANHDR02|0/0|NO_HEADER",
+        assertEquals("NACK|FNBRF01|" + msgId + "|0/0|NO_HEADER",
                 Files.readAllLines(result.responseFile()).get(0));
     }
 
