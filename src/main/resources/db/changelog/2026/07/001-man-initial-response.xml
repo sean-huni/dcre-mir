@@ -43,6 +43,14 @@
          the spine forward (it is the terminal response leg, DAG MIT -> {MIR, MRW});
          this ledger is MIR's ONLY write, guarded idempotent on arrival_id. -->
     <changeSet id="mir-001-man-initial-response" author="dcre">
+        <!-- A-82: this changeset gained a re-run guard AFTER it had already been applied,
+             which changes the enclosing checksum without changing one byte of the DDL
+             below. ANY rather than a pinned value: kind-dcre-dev stored 9:606eaebcd9496e2781d354077ab5a7eb,
+             and every environment that migrated at a different time holds a different
+             one, so a pin is correct on exactly one database and silently wrong on the
+             rest. The preConditions block is what keeps the re-run safe; the checksum
+             is not load-bearing here. Same call, same reason, as prr 002-batch-metadata. -->
+        <validCheckSum>ANY</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not><tableExists tableName="man_initial_response"/></not>
         </preConditions>
