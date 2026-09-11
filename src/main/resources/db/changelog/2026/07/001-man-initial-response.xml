@@ -43,6 +43,10 @@
          the spine forward (it is the terminal response leg, DAG MIT -> {MIR, MRW});
          this ledger is MIR's ONLY write, guarded idempotent on arrival_id. -->
     <changeSet id="mir-001-man-initial-response" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="man_initial_response"/></not>
+        </preConditions>
+        
         <createTable tableName="man_initial_response">
             <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
                 <constraints primaryKey="true" nullable="false"/>
