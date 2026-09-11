@@ -28,8 +28,20 @@
            - The raw .sql file is GONE, so the changelog is portable typed XML throughout
              (rules/be/java/persistence.md, pure-XML mandate).
 
-         No changeset here carries a MARK_RAN guard: every object is MIR_BATCH_-prefixed and
-         MIR is the only service that creates it, so on a v1 database it cannot already exist.
+         EVERY changeset here carries an onFail="MARK_RAN" guard on the object it creates.
+         The earlier claim that none was needed confused two different statements: MIR is
+         indeed the only service that creates MIR_BATCH_ objects, which is not the same as
+         those objects being absent. Measured on the stage cluster 2026-09-11, dcre_man
+         already held all six batch tables and all three batch sequences for ALL TEN
+         mandates services from the pre-v1 mechanism, while each service's changelog table
+         listed only the retired sqlFile-era ids and none of the ids below. That is the
+         state in which Liquibase issues CREATE TABLE against an existing relation and the
+         pod exits 78, observed live on CRW. No mandates pod has been seen reaching this
+         changeset: MRG, the only mandates service currently deployed to stage, fails
+         earlier on a checksum mismatch in 003-man-reporting.xml and 008-man-status-
+         history.xml, which this changelog does not touch. One object per changeset is what
+         makes each guard exact: every precondition names precisely what its changeset
+         creates, so it can never mark unfinished work as applied.
 
          Constraint names (JOB_INST_UN, JOB_INST_EXEC_FK, ...) are Spring Batch's own and are
          deliberately NOT service-prefixed, matching the DDL this replaces. CockroachDB scopes
@@ -38,6 +50,9 @@
          =================================================================================== -->
 
     <changeSet id="mir-002-batch-job-instance" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_JOB_INSTANCE"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_JOB_INSTANCE">
             <column name="JOB_INSTANCE_ID" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
@@ -51,6 +66,9 @@
     </changeSet>
 
     <changeSet id="mir-002-batch-job-execution" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_JOB_EXECUTION"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_JOB_EXECUTION">
             <column name="JOB_EXECUTION_ID" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
@@ -72,6 +90,9 @@
     </changeSet>
 
     <changeSet id="mir-002-batch-job-execution-params" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_JOB_EXECUTION_PARAMS"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_JOB_EXECUTION_PARAMS">
             <column name="JOB_EXECUTION_ID" type="BIGINT"><constraints nullable="false"/></column>
             <column name="PARAMETER_NAME" type="VARCHAR(100)"><constraints nullable="false"/></column>
@@ -85,6 +106,9 @@
     </changeSet>
 
     <changeSet id="mir-002-batch-step-execution" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_STEP_EXECUTION"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_STEP_EXECUTION">
             <column name="STEP_EXECUTION_ID" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
@@ -115,6 +139,9 @@
     </changeSet>
 
     <changeSet id="mir-002-batch-step-execution-context" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_STEP_EXECUTION_CONTEXT"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_STEP_EXECUTION_CONTEXT">
             <column name="STEP_EXECUTION_ID" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
@@ -128,6 +155,9 @@
     </changeSet>
 
     <changeSet id="mir-002-batch-job-execution-context" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="MIR_BATCH_JOB_EXECUTION_CONTEXT"/></not>
+        </preConditions>
         <createTable tableName="MIR_BATCH_JOB_EXECUTION_CONTEXT">
             <column name="JOB_EXECUTION_ID" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
@@ -144,14 +174,23 @@
          file this replaces, which is precisely why a mid-file kill used to leave a schema
          with every table and no sequence. -->
     <changeSet id="mir-002-batch-step-execution-seq" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="MIR_BATCH_STEP_EXECUTION_SEQ"/></not>
+        </preConditions>
         <createSequence sequenceName="MIR_BATCH_STEP_EXECUTION_SEQ" maxValue="9223372036854775807" cycle="false"/>
     </changeSet>
 
     <changeSet id="mir-002-batch-job-execution-seq" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="MIR_BATCH_JOB_EXECUTION_SEQ"/></not>
+        </preConditions>
         <createSequence sequenceName="MIR_BATCH_JOB_EXECUTION_SEQ" maxValue="9223372036854775807" cycle="false"/>
     </changeSet>
 
     <changeSet id="mir-002-batch-job-instance-seq" author="dcre">
+        <preConditions onFail="MARK_RAN">
+            <not><sequenceExists sequenceName="MIR_BATCH_JOB_INSTANCE_SEQ"/></not>
+        </preConditions>
         <createSequence sequenceName="MIR_BATCH_JOB_INSTANCE_SEQ" maxValue="9223372036854775807" cycle="false"/>
     </changeSet>
 
