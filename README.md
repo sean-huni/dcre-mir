@@ -59,3 +59,9 @@ Red-first Testcontainers CockroachDB + filesystem, 26 tests across 5 classes:
 - `MirJobTest` (4): the real job end to end, restart no-op with a zero-duplicate ledger, and the seam-level route / unconfigured-client fail-closed.
 - `MirJobConfigRetryTest` (1): the CRDB 40001 commit-abort retry is wired on the respond step.
 - `mir_initial_response.feature` (6 BDD scenarios): business-language coverage of the ACK/NACK/partial/file-fatal/ledger/restart flows.
+
+## Related repositories
+
+The complete, current list of live DCRE repositories (stage services, orchestrator, platform libraries, infra and tooling) lives in one place: the [DCRE design register README](https://github.com/sean-huni/dcre-design-register#repositories). Deprecated and archived repositories are deliberately absent from it. This README does not copy that list, so it cannot drift.
+
+- Design register: https://github.com/sean-huni/dcre-design-register (start at `docs/specs/DESIGN-REGISTER.md`; the diagrams in `docs/diagrams/` are the specification)
