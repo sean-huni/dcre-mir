@@ -60,7 +60,7 @@ One business datasource: `dcre_man` via `DCRE_DB_URL` / `DCRE_DB_USER` / `DCRE_D
 
 Liquibase owns the schema in the shared `dcre_man`, pure-XML changesets (MARK_RAN convergence guards in 000; explicit rollbacks in 000 and 001), per-service history tables (`mir_databasechangelog` / `mir_databasechangeloglock`), calendar layout `2026/07/`:
 
-- `000-man-core-bootstrap.xml`: MARK_RAN-guarded pre-creates of the shared core tables, structurally identical (comments and the `mir-` changeset id prefix aside) to the copies in mrr, mrv, mas and mit (checked 2026-09-28).
+- `000-man-core-bootstrap.xml`: MARK_RAN-guarded pre-creates of the shared core tables, structurally identical (comments and the `mir-` changeset id prefix aside) to the copies in the other nine mandates stages, mrr, mrv, mas, mit, mrw, mix, msx, mpx and mrg (ten copies in all, one per mandates stage; checked 2026-09-28).
 - `001-man-initial-response.xml`: `man_initial_response` (UNIQUE `arrival_id`, UNIQUE `file_name`, `written_at` NULL = staged-not-written signal). MIR's only owned table, cloned from `cir_response`.
 - `002-batch-metadata.xml`: Liquibase-owned Spring Batch 6 metadata as typed XML, one changeset per object (six tables, three sequences), prefixed `MIR_BATCH_`, EXIT_MESSAGE widened to TEXT for CockroachDB.
 
